@@ -73,7 +73,7 @@ bool IsSortByRelevanceCorrect(const T& res) {
     return true;
 }
 
-void TestCalculatingAndSortingRelevance() {
+void TestSortRelevance() {
     const vector <string> content = { "белый кот модный ошейник"s, "пушистый кот пушистый хвост"s, "ухоженный пёс выразительные глаза"s };
     const string search = "пушистый ухоженный кот"s;
     const vector<string> search_words = { "пушистый"s, "ухоженный"s, "кот"s };
@@ -84,17 +84,29 @@ void TestCalculatingAndSortingRelevance() {
     auto res = server.FindTopDocuments(search);
 
     ASSERT_HINT(IsSortByRelevanceCorrect(res), "Problems with relevance (uncorrect sort");
-    int num_docs = 3;
+}
+
+void TestCalculatingRelevance() {
+    const vector <string> content = { "белый кот модный ошейник"s, "пушистый кот пушистый хвост"s, "ухоженный пёс выразительные глаза"s };
+    const string search = "пушистый ухоженный кот"s;
+    const vector<string> search_words = { "пушистый"s, "ухоженный"s, "кот"s };
+    SearchServer server;
+    server.AddDocument(1, content.at(0), DocumentStatus::ACTUAL, { 8, -3 });
+    server.AddDocument(2, content.at(1), DocumentStatus::ACTUAL, { 7, 2, 7 });
+    server.AddDocument(3, content.at(2), DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
+    auto res = server.FindTopDocuments(search);
+
     map <string, double> num_docs_for_word;
     num_docs_for_word["пушистый"s] = 1;
     num_docs_for_word["ухоженный"s] = 1;
     num_docs_for_word["кот"s] = 2;
 
     map <string, double> idf;
-    for (const auto& el : num_docs_for_word) {
-        double tmp = log(static_cast<double>(content.size() / el.second));
-        idf.emplace(el.first, tmp);
-    }
+
+    idf["пушистый"s] = log(static_cast<double>(content.size()) / num_docs_for_word.at("пушистый"s));
+    idf["ухоженный"s] = log(static_cast<double>(content.size()) / num_docs_for_word.at("ухоженный"s));
+    idf["кот"s] = log(static_cast<double>(content.size()) / num_docs_for_word.at("кот"s));
+
 
     double num_words_in_docs = 4;
     map <string, map<string, double>> tf;
@@ -110,20 +122,18 @@ void TestCalculatingAndSortingRelevance() {
     tf["3st doc"]["ухоженный"] = 1.0 / num_words_in_docs;
     tf["3st doc"]["кот"] = 0;
 
-    vector <double> relevance = { 0,0,0 };
-    int i = 0;
-    for (const auto& doc : tf)
-    {
-        for (const auto& tf_word : doc.second) {
-            relevance[i] += tf_word.second * idf.at(tf_word.first);
-        }
-        ++i;
-
-    }
+    vector <double> relevance;
+    double rel;
+    rel = tf["1st doc"]["пушистый"] * idf["пушистый"s] + tf["1st doc"]["ухоженный"] * idf["ухоженный"s] + tf["1st doc"]["кот"] * idf["кот"s];
+    relevance.push_back(rel);
+    rel = tf["2st doc"]["пушистый"] * idf["пушистый"s] + tf["2st doc"]["ухоженный"] * idf["ухоженный"s] + tf["2st doc"]["кот"] * idf["кот"s];
+    relevance.push_back(rel);
+    rel = tf["3st doc"]["пушистый"] * idf["пушистый"s] + tf["3st doc"]["ухоженный"] * idf["ухоженный"s] + tf["3st doc"]["кот"] * idf["кот"s];
+    relevance.push_back(rel);
     sort(relevance.begin(), relevance.end());
     reverse(relevance.begin(), relevance.end());
     auto error_rate = 1e-6;
-    i = 0;
+    int i = 0;
     for (const auto& el : res) {
         ASSERT_HINT(abs(el.relevance - relevance.at(i)) < error_rate, "Problems with relevance (uncorrect calculating)");
         ++i;
@@ -140,33 +150,22 @@ void TestCalculatingRating() {
     server.AddDocument(1, content.at(1), DocumentStatus::ACTUAL, ratings.at(1));
     server.AddDocument(2, content.at(2), DocumentStatus::ACTUAL, ratings.at(2));
     auto res = server.FindTopDocuments(search);
-    vector <int> test_ratings;
-    for (const auto& rating : ratings) {
-        int rat = 0;
-        for (const auto& el : rating) {
-            rat += el;
-        }
-        rat /= static_cast<int>(rating.size());
-        test_ratings.push_back(rat);
-    }
-    // el.id соответствует нумеровке элементов векотра test_ratings и id добавленного документа, id поменять - не будет работать, но мы тут и не id тестим ;)
-    for (const auto& el : res) {
-        ASSERT_HINT(el.rating == test_ratings.at(el.id), "Some problems to calculate ratings. It must be arefmetical mean");
-    }
-
+    ASSERT_HINT(res.at(0).rating == (7 + 2 + 7) / 3, "Some problems to calculate ratings. It must be arefmetical mean");
+    ASSERT_HINT(res.at(1).rating == (5 + (-12) + 2 + 1 + 1) / 5, "Some problems to calculate ratings. It must be arefmetical mean");
+    ASSERT_HINT(res.at(2).rating == (8 + (-3)) / 2, "Some problems to calculate ratings. It must be arefmetical mean");
 }
 void TestFilterByPredicateByUser() {
     SearchServer server;
     server.AddDocument(12, "белый кот модный ошейник"s, DocumentStatus::ACTUAL, { 8, -3 });
     server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
     server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
-    auto res = server.FindTopDocuments("пушистый ухоженный кот"s, [](int document_id, DocumentStatus status, int rating) { return document_id % 2 == 0; });
-
-    for (const auto& el : res) {
-        ASSERT_HINT(el.id % 2 == 0, "Problems with search by predicate");
-    }
-
-
+    auto res = server.FindTopDocuments("пушистый ухоженный кот"s,
+        [](int document_id, DocumentStatus status, int rating)
+        {
+            return document_id % 2 == 0;
+        });
+    ASSERT_HINT(res.at(0).id == 2, "Problems with search by predicate");
+    ASSERT_HINT(res.at(1).id == 12, "Problems with search by predicate");
 }
 
 void TestSearchDocsByStatus() {
@@ -176,9 +175,10 @@ void TestSearchDocsByStatus() {
     server.AddDocument(2, "ухоженный пёс выразительные глаза"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
     auto res = server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED);
     ASSERT_HINT(res.empty(), "Problems with search by status. It must be empty");
+
     server.AddDocument(3, "ухоженный скворец евгений"s, DocumentStatus::BANNED, { 9 });
     res = server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED);
-    ASSERT_HINT(res.size() == 1 && res.at(0).id == 3, "Problems with search by status. It must be empty");
+    ASSERT_HINT(res.size() == 1 && res.at(0).id == 3, "Problems with search by status");
 
 }
 
@@ -186,7 +186,8 @@ void TestSearchServer() {
     RUN_TEST(TestFindDocContainWordsFromSearchAndSupportStopWords);
     RUN_TEST(TestFindingDocWhithMinusWords);
     RUN_TEST(TestMatchingWords);
-    RUN_TEST(TestCalculatingAndSortingRelevance);
+    RUN_TEST(TestSortRelevance);
+    RUN_TEST(TestCalculatingRelevance);
     RUN_TEST(TestCalculatingRating);
     RUN_TEST(TestFilterByPredicateByUser);
     RUN_TEST(TestSearchDocsByStatus);
@@ -194,7 +195,6 @@ void TestSearchServer() {
 // --------- Окончание модульных тестов поисковой системы -----------
 
 int main() {
-    TestSearchServer();
     TestSearchServer();
     // Если вы видите эту строку, значит все тесты прошли успешно
     std::cout << "Search server testing finished"s << endl;
