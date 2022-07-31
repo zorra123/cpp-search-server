@@ -114,7 +114,7 @@ public:
 
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
-        if (/* (raw_query.size() == 1 && raw_query[0] == '-') ||*/ raw_query[raw_query.size() - 1] == '-')throw invalid_argument("");
+        if (raw_query[raw_query.size() - 1] == '-')throw invalid_argument("");
         for (int i = 0; i < raw_query.size()-1; ++i) {
             if (raw_query[i] == '-') {
                 if (raw_query[i + 1] == ' ' || raw_query[i + 1] == '-') throw invalid_argument("");
@@ -154,7 +154,7 @@ public:
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const {
         const Query query = ParseQuery(raw_query);
-        if (/*(raw_query.size() == 1 && raw_query[0] == '-') || */raw_query[raw_query.size() - 1] == '-')throw invalid_argument("");
+        if (raw_query[raw_query.size() - 1] == '-')throw invalid_argument("");
         for (int i = 0; i < raw_query.size() - 1; ++i) {
             if (raw_query[i] == '-') {
                 if (raw_query[i + 1] == ' ' || raw_query[i + 1] == '-')throw invalid_argument("");
@@ -179,8 +179,6 @@ public:
                 break;
             }
         }
-        //tuple<vector<string>, DocumentStatus> res = { matched_words, documents_.at(document_id).status };
-        //return res;
         return make_tuple(matched_words, documents_.at(document_id).status);
     }
     int GetDocumentId(int index) const {
@@ -190,7 +188,6 @@ public:
             return it->first;
         }
         else  throw out_of_range("");
-       // return index >= 0 && index < documents_.size() ? documents_.at(index).rating : SearchServer::INVALID_DOCUMENT_ID;
     }
 
 private:
