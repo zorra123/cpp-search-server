@@ -9,6 +9,9 @@
 #include <utility>
 #include <vector>
 #include <optional>
+#include <numeric>
+
+#define ERROR_RATE 1e-6
 
 using namespace std;
 
@@ -86,9 +89,7 @@ public:
     template <typename StringContainer>
     explicit SearchServer(const StringContainer& stop_words)
         : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
-        for (const auto& el : stop_words) {
-            if (!IsValidWord(el)) throw invalid_argument("");
-        }
+        CheckElementsForSpecialSymbols(stop_words);
     }
 
     explicit SearchServer(const string& stop_words_text)
@@ -96,36 +97,27 @@ public:
     {
     }
 
-     void AddDocument(int document_id, const string& document, DocumentStatus status,
+    void AddDocument(int document_id, const string& document, DocumentStatus status,
         const vector<int>& ratings) {
-        if (document_id < 0) throw invalid_argument("");
-        if (!documents_.empty() && documents_.count(document_id)) throw invalid_argument("");
+        if (document_id < 0) throw invalid_argument("You musn't use negative id");
+        if (documents_.count(document_id)) throw invalid_argument("You're trying to use same id");
         const vector<string> words = SplitIntoWordsNoStop(document);
-        for (const auto& el : words) {
-            if (!IsValidWord(el))
-                throw invalid_argument("");
-        }
+        CheckElementsForSpecialSymbols(words);
         const double inv_word_count = 1.0 / words.size();
         for (const string& word : words) {
             word_to_document_freqs_[word][document_id] += inv_word_count;
         }
-        documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
+        documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });        
     }
 
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
-        if (raw_query[raw_query.size() - 1] == '-')throw invalid_argument("");
-        for (int i = 0; i < raw_query.size()-1; ++i) {
-            if (raw_query[i] == '-') {
-                if (raw_query[i + 1] == ' ' || raw_query[i + 1] == '-') throw invalid_argument("");
-            }
-        }
-        if (!IsValidWord(raw_query)) throw invalid_argument("");
+        CheckRequestForMistakes(raw_query);
         const Query query = ParseQuery(raw_query);
         auto matched_documents = FindAllDocuments(query, document_predicate);
 
         sort(matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
-            if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+            if (abs(lhs.relevance - rhs.relevance) < ERROR_RATE) {
                 return lhs.rating > rhs.rating;
             }
             else {
@@ -182,7 +174,10 @@ public:
         return make_tuple(matched_words, documents_.at(document_id).status);
     }
     int GetDocumentId(int index) const {
+        //return vec_docs_.at(index)->first;
+        
         if (index >= 0 && index < documents_.size()) {
+           
             auto it = documents_.begin();
             advance(it, index);
             return it->first;
@@ -222,10 +217,7 @@ private:
         if (ratings.empty()) {
             return 0;
         }
-        int rating_sum = 0;
-        for (const int rating : ratings) {
-            rating_sum += rating;
-        }
+        int rating_sum = accumulate(ratings.begin(), ratings.end(), 0);
         return rating_sum / static_cast<int>(ratings.size());
     }
 
@@ -301,6 +293,21 @@ private:
             matched_documents.push_back({ document_id, relevance, documents_.at(document_id).rating });
         }
         return matched_documents;
+    }
+    template <typename StringContainer>
+    static void CheckElementsForSpecialSymbols(const StringContainer &container) {
+        for (const auto& el : container) {
+            if (!IsValidWord(el)) throw invalid_argument("You mustn't use special symbols:"s + el);
+        }
+    }
+    static void CheckRequestForMistakes(const string& raw_query) {
+        if (raw_query[raw_query.size() - 1] == '-')throw invalid_argument("uncorrect request, just one element : -"s);
+        for (int i = 0; i < raw_query.size() - 1; ++i) {
+            if (raw_query[i] == '-') {
+                if (raw_query[i + 1] == ' ' || raw_query[i + 1] == '-') throw invalid_argument("uncorrect request no text after - or more than one -"s);
+            }
+        }
+        if (!IsValidWord(raw_query)) throw invalid_argument("You mustn't use special symbols"s);
     }
 
 };
