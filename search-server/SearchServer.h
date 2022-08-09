@@ -112,7 +112,6 @@ public:
 
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
-        CheckRequestForMistakes(raw_query);
         const Query query = ParseQuery(raw_query);
         auto matched_documents = FindAllDocuments(query, document_predicate);
 
@@ -146,13 +145,6 @@ public:
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const {
         const Query query = ParseQuery(raw_query);
-        if (raw_query[raw_query.size() - 1] == '-')throw invalid_argument("");
-        for (int i = 0; i < raw_query.size() - 1; ++i) {
-            if (raw_query[i] == '-') {
-                if (raw_query[i + 1] == ' ' || raw_query[i + 1] == '-')throw invalid_argument("");
-            }
-        }
-        if (!IsValidWord(raw_query)) throw invalid_argument("");
         vector<string> matched_words;
         for (const string& word : query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
@@ -174,10 +166,7 @@ public:
         return make_tuple(matched_words, documents_.at(document_id).status);
     }
     int GetDocumentId(int index) const {
-        //return vec_docs_.at(index)->first;
-        
         if (index >= 0 && index < documents_.size()) {
-           
             auto it = documents_.begin();
             advance(it, index);
             return it->first;
@@ -243,6 +232,7 @@ private:
     };
 
     Query ParseQuery(const string& text) const {
+        CheckRequestForMistakes(text);
         Query query;
         for (const string& word : SplitIntoWords(text)) {
             const QueryWord query_word = ParseQueryWord(word);
