@@ -1,6 +1,8 @@
-//Вставьте сюда своё решение из урока «‎Очередь запросов».‎
 #include "search_server.h"
+#include <numeric>
+#include <cmath>
 
+using namespace std::literals::string_literals;
 
 void SearchServer::AddDocument(int document_id, const std::string& document, DocumentStatus status, const std::vector<int>&ratings) {
     if ((document_id < 0) || (documents_.count(document_id) > 0)) {
@@ -78,10 +80,8 @@ bool SearchServer::IsStopWord(const std::string& word) const {
      if (ratings.empty()) {
          return 0;
      }
-     int rating_sum = 0;
-     for (const int rating : ratings) {
-         rating_sum += rating;
-     }
+
+     int rating_sum = std::accumulate(ratings.begin(), ratings.end(),0);
      return rating_sum / static_cast<int>(ratings.size());
  }
 

@@ -1,17 +1,5 @@
-//Вставьте сюда своё решение из урока «‎Очередь запросов».‎
 #include "string_processing.h"
-std::string ReadLine() {
-    std::string s;
-    getline(std::cin, s);
-    return s;
-}
 
-int ReadLineWithNumber() {
-    int result;
-    std::cin >> result;
-    ReadLine();
-    return result;
-}
 
 std::vector<std::string> SplitIntoWords(const std::string& text) {
     std::vector<std::string> words;

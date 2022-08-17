@@ -1,31 +1,29 @@
-//Вставьте сюда своё решение из урока «‎Очередь запросов».‎
 #include "request_queue.h"
 
 
 std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query, DocumentStatus status) {
-    // напишите реализацию
-    if (requests_.size() == min_in_day_) {
-        requests_.pop_front();
-    }
-    auto res = search_server_t.FindTopDocuments(raw_query, status);
-    requests_.push_back({ res });
-    return res;
+    return AddFindRequest(raw_query, [status](int document_id, DocumentStatus document_status, int rating) {
+        return document_status == status;
+        });
 }
 std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query) {
-    // напишите реализацию
-    if (requests_.size() == min_in_day_) {
-        requests_.pop_front();
-    }
-    auto res = search_server_t.FindTopDocuments(raw_query);
-    requests_.push_back({ res });
-    return res;
-
+    return AddFindRequest(raw_query, DocumentStatus::ACTUAL);
 }
 
 int RequestQueue::GetNoResultRequests() const {
-    // напишите реализацию
-    auto num = std::count_if(requests_.begin(), requests_.end(), [](const auto& el) {
-        return el.resul.empty();
-        });
-    return num;
+    return num_zero_requests;
+}
+
+void RequestQueue::AddRequests(int this_num_results) {
+    ++time;
+    requests_.push_back({ this_num_results,time });
+    if (this_num_results == 0) {
+        ++num_zero_requests;
+    }
+    while (requests_.size() > min_in_day_) {
+        if (requests_.front().num_results == 0) {
+            --num_zero_requests;
+        }
+        requests_.pop_front();
+    }
 }

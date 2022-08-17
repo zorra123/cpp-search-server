@@ -4,12 +4,12 @@
 #include <map>
 #include <algorithm>
 #include <iostream>
-#include <math.h>
 #include "document.h"
 #include "string_processing.h"
 
-using namespace std::literals::string_literals;
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+
+#define CALCULATING_ERROR 1e-6
 
 class SearchServer {
 public:
@@ -67,28 +67,17 @@ private:
 
 };
 
-template <typename StringContainer>
-std::set<std::string> MakeUniqueNonEmptyStrings(const StringContainer& strings) {
-    std::set<std::string> non_empty_strings;
-    for (const std::string& str : strings) {
-        if (!str.empty()) {
-            non_empty_strings.insert(str);
-        }
-    }
-    return non_empty_strings;
-}
+
 template <typename StringContainer>
 SearchServer::SearchServer(const StringContainer& stop_words)
     : stop_words_(MakeUniqueNonEmptyStrings(stop_words))  // Extract non-empty stop words
 {
+    using namespace std::literals::string_literals;
     if (!all_of(stop_words_.begin(), stop_words_.end(), IsValidWord)) {
         throw std::invalid_argument("Some of stop words are invalid"s);
     }
 }
 
-
-
- 
 template <typename DocumentPredicate>
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const {
         const auto query = ParseQuery(raw_query);
@@ -96,7 +85,7 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_quer
         auto matched_documents = FindAllDocuments(query, document_predicate);
 
         sort(matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
-            if (std::abs(lhs.relevance - rhs.relevance) < 1e-6) {
+            if (std::abs(lhs.relevance - rhs.relevance) < CALCULATING_ERROR) {
                 return lhs.rating > rhs.rating;
             }
             else {
