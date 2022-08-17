@@ -9,7 +9,7 @@
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
 
-#define CALCULATING_ERROR 1e-6
+const double CALCULATING_ERROR = 1e-6;
 
 class SearchServer {
 public:
