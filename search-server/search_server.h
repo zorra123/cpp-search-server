@@ -18,15 +18,19 @@ public:
     explicit SearchServer(const std::string& stop_words_text)  // Invoke delegating constructor from string container 
         : SearchServer(SplitIntoWords(stop_words_text)) {};
 
-    void AddDocument(int document_id, const std::string & document, DocumentStatus status, const std::vector<int>& ratings);
+    void AddDocument(int document_id, const std::string& document, DocumentStatus status, const std::vector<int>& ratings);
     template <typename DocumentPredicate>
     std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const;
     std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentStatus status) const;
     std::vector<Document> FindTopDocuments(const std::string& raw_query) const;
 
     int GetDocumentCount() const;
-    int GetDocumentId(int index) const;
     std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string& raw_query, int document_id) const;
+
+    const std::set<int>::iterator begin()const;
+    const std::set<int>::iterator end()const;
+    const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
+    void RemoveDocument(int document_id);
 
 private:
     struct DocumentData {
@@ -45,8 +49,11 @@ private:
 
     const std::set<std::string> stop_words_;
     std::map<std::string, std::map<int, double>> word_to_document_freqs_;
+    std::map<int, std::map<std::string, double>> word_to_document_freqs_new;
+    std::map<std::string, double> empty;
+
     std::map<int, DocumentData> documents_;
-    std::vector<int> document_ids_;
+    std::set<int> document_ids_;
 
 
     bool IsStopWord(const std::string& word) const;
@@ -80,27 +87,27 @@ SearchServer::SearchServer(const StringContainer& stop_words)
 
 template <typename DocumentPredicate>
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const {
-        const auto query = ParseQuery(raw_query);
+    const auto query = ParseQuery(raw_query);
 
-        auto matched_documents = FindAllDocuments(query, document_predicate);
+    auto matched_documents = FindAllDocuments(query, document_predicate);
 
-        sort(matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
-            if (std::abs(lhs.relevance - rhs.relevance) < CALCULATING_ERROR) {
-                return lhs.rating > rhs.rating;
-            }
-            else {
-                return lhs.relevance > rhs.relevance;
-            }
-            });
-        if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
-            matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
+    sort(matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
+        if (std::abs(lhs.relevance - rhs.relevance) < CALCULATING_ERROR) {
+            return lhs.rating > rhs.rating;
         }
+        else {
+            return lhs.relevance > rhs.relevance;
+        }
+        });
+    if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
+        matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
+    }
 
-        return matched_documents;
+    return matched_documents;
 }
 
 template <typename DocumentPredicate>
-std::vector<Document> SearchServer::FindAllDocuments(const Query & query, DocumentPredicate document_predicate) const{
+std::vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
     std::map<int, double> document_to_relevance;
     for (const std::string& word : query.plus_words) {
         if (word_to_document_freqs_.count(word) == 0) {
@@ -130,5 +137,3 @@ std::vector<Document> SearchServer::FindAllDocuments(const Query & query, Docume
     }
     return matched_documents;
 }
-
-
