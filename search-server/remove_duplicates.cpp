@@ -1,5 +1,5 @@
 #include "remove_duplicates.h"
-
+/*
 using namespace std::literals::string_literals;
 
 void RemoveDuplicates(SearchServer& search_server) {
@@ -19,4 +19,4 @@ void RemoveDuplicates(SearchServer& search_server) {
         std::cout << "Found duplicate document id "s << id << std::endl;
         search_server.RemoveDocument(id);
     }
-}
+}*/
