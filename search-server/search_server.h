@@ -56,6 +56,12 @@ const double CALCULATING_ERROR = 1e-6;
             bool is_minus;
             bool is_stop;
         };
+        struct VecQuery {
+            VecQuery() = default;
+            VecQuery(int num_minus, int num_plus) :minus_words(num_minus), plus_words(num_plus) {};
+            std::vector<std::string> minus_words;
+            std::vector<std::string> plus_words;
+        };
         struct Query {
             std::set<std::string> plus_words;
             std::set<std::string> minus_words;
@@ -78,6 +84,7 @@ const double CALCULATING_ERROR = 1e-6;
         static int ComputeAverageRating(const std::vector<int>& ratings);
 
         QueryWord ParseQueryWord(const std::string& text) const;
+        VecQuery ParseQuery(std::execution::parallel_policy par, const std::string& text) const;
         Query ParseQuery(const std::string& text) const;
 
         // Existence required
