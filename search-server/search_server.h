@@ -14,14 +14,16 @@ const double CALCULATING_ERROR = 1e-6;
 
     class SearchServer {
     public:
-        using MyTulpe = std::tuple<std::vector<std::string>, DocumentStatus>;
+        using MyTulpe = std::tuple<std::vector<std::string_view>, DocumentStatus>;
 
         template <typename StringContainer>
         explicit SearchServer(const StringContainer& stop_words);  // Extract non-empty stop words
         explicit SearchServer(const std::string& stop_words_text)  // Invoke delegating constructor from string container 
-            : SearchServer(SplitIntoWords(stop_words_text)) {};
+            : SearchServer(static_cast<std::string_view>(stop_words_text)) {};
 
-        void AddDocument(int document_id, const std::string& document, DocumentStatus status, const std::vector<int>& ratings);
+        explicit SearchServer(const std::string_view stop_words)
+            :SearchServer(SplitIntoWordsView(stop_words)) {};
+        void AddDocument(int document_id, const std::string_view document, DocumentStatus status, const std::vector<int>& ratings);
 
         template <typename DocumentPredicate>
         std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const;
@@ -30,16 +32,16 @@ const double CALCULATING_ERROR = 1e-6;
 
         int GetDocumentCount() const;
 
-        MyTulpe MatchDocument(std::execution::parallel_policy par,const std::string& raw_query, int document_id) const;
-        MyTulpe MatchDocument(std::execution::sequenced_policy seq, const std::string& raw_query, int document_id) const {
+        MyTulpe MatchDocument(std::execution::parallel_policy par,const std::string_view& raw_query, int document_id) const;
+        MyTulpe MatchDocument(std::execution::sequenced_policy seq, const std::string_view& raw_query, int document_id) const {
             return MatchDocument(raw_query, document_id);
         }
        
-        MyTulpe MatchDocument(const std::string& raw_query, int document_id) const;
+        MyTulpe MatchDocument(const std::string_view& raw_query, int document_id) const;
 
         const std::set<int>::iterator begin()const;
         const std::set<int>::iterator end()const;
-        const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
+        const std::map<std::string_view, double>& GetWordFrequencies(int document_id) const;
         void RemoveDocument(int document_id) {
             RemoveDocument(std::execution::seq, document_id);
         }
@@ -52,43 +54,45 @@ const double CALCULATING_ERROR = 1e-6;
             DocumentStatus status;
         };
         struct QueryWord {
-            std::string data;
+            std::string_view data;
             bool is_minus;
             bool is_stop;
         };
         struct VecQuery {
             VecQuery() = default;
             VecQuery(int num_minus, int num_plus) :minus_words(num_minus), plus_words(num_plus) {};
-            std::vector<std::string> minus_words;
-            std::vector<std::string> plus_words;
+            std::vector<std::string_view> minus_words;
+            std::vector<std::string_view> plus_words;
         };
         struct Query {
-            std::set<std::string> plus_words;
-            std::set<std::string> minus_words;
+            std::set<std::string_view> plus_words;
+            std::set<std::string_view> minus_words;
         };
 
-        const std::set<std::string> stop_words_;
-        std::map<std::string, std::map<int, double>> word_to_document_freqs_;
-        std::map<int, std::map<std::string, double>> word_to_document_freqs_new;
+        const std::set<std::string_view> stop_words_;
+        //const std::set<std::string,less<>> stop_words_;
+
+        std::map<std::string_view, std::map<int, double>> word_to_document_freqs_;
+        std::map<int, std::map<std::string_view, double>> word_to_document_freqs_new;
 
 
         std::map<int, DocumentData> documents_;
         std::set<int> document_ids_;
 
 
-        bool IsStopWord(const std::string& word) const;
+        bool IsStopWord(const std::string_view word) const;
 
-        static bool IsValidWord(const std::string& word); // A valid word must not contain special characters
-        std::vector<std::string> SplitIntoWordsNoStop(const std::string& text) const;
+        static bool IsValidWord(const std::string_view word); // A valid word must not contain special characters
+        std::vector<std::string_view> SplitIntoWordsNoStop(const std::string_view text) const;
 
         static int ComputeAverageRating(const std::vector<int>& ratings);
 
-        QueryWord ParseQueryWord(const std::string& text) const;
-        VecQuery ParseQuery(std::execution::parallel_policy par, const std::string& text) const;
-        Query ParseQuery(const std::string& text) const;
+        QueryWord ParseQueryWord(const std::string_view text) const;
+        VecQuery ParseQuery(std::execution::parallel_policy par, const std::string_view text) const;
+        Query ParseQuery(const std::string_view text) const;
 
         // Existence required
-        double ComputeWordInverseDocumentFreq(const std::string& word) const;
+        double ComputeWordInverseDocumentFreq(const std::string_view word) const;
 
         template <typename DocumentPredicate>
         std::vector<Document> FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const;
@@ -129,7 +133,7 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_quer
 template <typename DocumentPredicate>
 std::vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
     std::map<int, double> document_to_relevance;
-    for (const std::string& word : query.plus_words) {
+    for (const std::string_view word : query.plus_words) {
         if (word_to_document_freqs_.count(word) == 0) {
             continue;
         }
@@ -141,7 +145,7 @@ std::vector<Document> SearchServer::FindAllDocuments(const Query& query, Documen
             }
         }
     }
-    for (const std::string& word : query.minus_words) {
+    for (const std::string_view word : query.minus_words) {
         if (word_to_document_freqs_.count(word) == 0) {
             continue;
         }

@@ -42,6 +42,5 @@ std::vector<std::string> SplitIntoWords(const std::string& text) {
     if (!word.empty()) {
         words.push_back(word);
     }
-
     return words;
 }
