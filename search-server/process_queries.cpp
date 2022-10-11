@@ -22,7 +22,7 @@ std::list<Document> ProcessQueriesJoined(const SearchServer& search_server, cons
     std::list<Document> res;
     for (auto& el : ProcessQueries(search_server, queries)) {//ProcessQueries возвращает временный объект, копирования не происходит
         for (auto& doc : el) {
-            res.push_front(std::move(doc));//происходит перемещение элемента временного объекта, копирования нет
+            res.push_front(std::move(doc));
         }
     }
     res.reverse();

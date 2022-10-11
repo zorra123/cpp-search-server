@@ -10,30 +10,35 @@ void SearchServer::AddDocument(int document_id, const std::string_view document,
     if ((document_id < 0) || (documents_.count(document_id) > 0)) {
         throw std::invalid_argument("Invalid document_id"s);
     }
-    const auto words = SplitIntoWordsNoStop(document);
+    //auto it = document.begin();
+    docs_str.push_back(document.data());
+    /*std::string document_text;
+    document_text.resize(document.size());
+    std::copy(document.begin(), document.end(), document_text.begin());*/
+    const auto words = SplitIntoWordsNoStop(docs_str.back());
 
     const double inv_word_count = 1.0 / words.size();
     for (const std::string_view word : words) {
         word_to_document_freqs_[word][document_id] += inv_word_count;
         word_to_document_freqs_new[document_id][word] += inv_word_count;
     }
-    documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
+    documents_.emplace(document_id, DocumentData{ /*std::move(document_text),*/ ComputeAverageRating(ratings), status});
     document_ids_.insert(document_id);
 }
 
-std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentStatus status) const {
+std::vector<Document> SearchServer::FindTopDocuments(const std::string_view raw_query, DocumentStatus status) const {
     return FindTopDocuments(raw_query, [status](int document_id, DocumentStatus document_status, int rating) {
         return document_status == status;
         });
 }
-std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query) const {
+std::vector<Document> SearchServer::FindTopDocuments(const std::string_view raw_query) const {
     return FindTopDocuments(raw_query, DocumentStatus::ACTUAL);
 }
 int SearchServer::GetDocumentCount() const {
     return static_cast <int>( documents_.size());
 }
 std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(std::execution::parallel_policy par,
-                                                                                const std::string_view& raw_query,
+                                                                                const std::string_view raw_query,
                                                                                 int document_id) const {
     VecQuery query = ParseQuery(par, raw_query);
     /*std::sort(par, query.minus_words.begin(), query.minus_words.end());
@@ -69,7 +74,7 @@ std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDoc
     return { matched_words, documents_.at(document_id).status };
 }
 
-std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(const std::string_view& raw_query, int document_id) const {
+std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(const std::string_view raw_query, int document_id) const {
     const auto query = ParseQuery(raw_query);
     std::vector<std::string_view> matched_words;
 

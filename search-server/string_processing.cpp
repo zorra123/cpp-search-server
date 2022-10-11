@@ -1,8 +1,9 @@
 #include "string_processing.h"
 
+
+
 std::vector<std::string_view> SplitIntoWordsView(std::string_view str) {
     std::vector<std::string_view> result;
-    //int64_t pos = str.find_first_not_of(" ");
     const int64_t pos_end = str.npos;
     while (str.size()) {
         int64_t word_begin = str.find_first_not_of(' ');
@@ -22,9 +23,18 @@ std::vector<std::string_view> SplitIntoWordsView(std::string_view str) {
             }
         }
     }
-
     return result;
 }
+
+
+
+
+
+
+
+
+
+
 std::vector<std::string> SplitIntoWords(const std::string& text) {
     std::vector<std::string> words;
     std::string word;

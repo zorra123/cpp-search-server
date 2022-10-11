@@ -7,6 +7,8 @@
 #include "document.h"
 #include "string_processing.h"
 #include <execution>
+#include <string_view>
+#include <list>
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
 
@@ -21,23 +23,23 @@ const double CALCULATING_ERROR = 1e-6;
         explicit SearchServer(const std::string& stop_words_text)  // Invoke delegating constructor from string container 
             : SearchServer(static_cast<std::string_view>(stop_words_text)) {};
 
-        explicit SearchServer(const std::string_view stop_words)
+        explicit SearchServer(std::string_view stop_words)
             :SearchServer(SplitIntoWordsView(stop_words)) {};
         void AddDocument(int document_id, const std::string_view document, DocumentStatus status, const std::vector<int>& ratings);
 
         template <typename DocumentPredicate>
-        std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const;
-        std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentStatus status) const;
-        std::vector<Document> FindTopDocuments(const std::string& raw_query) const;
+        std::vector<Document> FindTopDocuments(const std::string_view raw_query, DocumentPredicate document_predicate) const;
+        std::vector<Document> FindTopDocuments(const std::string_view raw_query, DocumentStatus status) const;
+        std::vector<Document> FindTopDocuments(const std::string_view raw_query) const;
 
         int GetDocumentCount() const;
 
-        MyTulpe MatchDocument(std::execution::parallel_policy par,const std::string_view& raw_query, int document_id) const;
-        MyTulpe MatchDocument(std::execution::sequenced_policy seq, const std::string_view& raw_query, int document_id) const {
+        MyTulpe MatchDocument(std::execution::parallel_policy par,const std::string_view raw_query, int document_id) const;
+        MyTulpe MatchDocument(std::execution::sequenced_policy seq, const std::string_view raw_query, int document_id) const {
             return MatchDocument(raw_query, document_id);
         }
        
-        MyTulpe MatchDocument(const std::string_view& raw_query, int document_id) const;
+        MyTulpe MatchDocument(const std::string_view raw_query, int document_id) const;
 
         const std::set<int>::iterator begin()const;
         const std::set<int>::iterator end()const;
@@ -49,7 +51,9 @@ const double CALCULATING_ERROR = 1e-6;
         void RemoveDocument(std::execution::parallel_policy par, int document_id);
 
     private:
+        std::list<std::string> docs_str;
         struct DocumentData {
+            //std::string str;
             int rating;
             DocumentStatus status;
         };
@@ -69,8 +73,8 @@ const double CALCULATING_ERROR = 1e-6;
             std::set<std::string_view> minus_words;
         };
 
-        const std::set<std::string_view> stop_words_;
-        //const std::set<std::string,less<>> stop_words_;
+       // const std::set<std::string,std::less<>> stop_words_;
+        const std::set<std::string,std::less<>> stop_words_;
 
         std::map<std::string_view, std::map<int, double>> word_to_document_freqs_;
         std::map<int, std::map<std::string_view, double>> word_to_document_freqs_new;
@@ -102,6 +106,7 @@ const double CALCULATING_ERROR = 1e-6;
 template <typename StringContainer>
 SearchServer::SearchServer(const StringContainer& stop_words)
     : stop_words_(MakeUniqueNonEmptyStrings(stop_words))  // Extract non-empty stop words
+    //: stop_words_(stop_words)
 {
     using namespace std::literals::string_literals;
     if (!all_of(stop_words_.begin(), stop_words_.end(), IsValidWord)) {
@@ -110,7 +115,7 @@ SearchServer::SearchServer(const StringContainer& stop_words)
 }
 
 template <typename DocumentPredicate>
-std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const {
+std::vector<Document> SearchServer::FindTopDocuments(const std::string_view raw_query, DocumentPredicate document_predicate) const {
     const auto query = ParseQuery(raw_query);
 
     auto matched_documents = FindAllDocuments(query, document_predicate);
