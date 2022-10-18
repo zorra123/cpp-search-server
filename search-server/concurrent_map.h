@@ -58,7 +58,7 @@ private:
     std::vector<SubMap> map_vec;
 };
 
-
+/*
 template <typename Value>
 class ConcurrentSet
 {
@@ -113,3 +113,4 @@ public:
         return result;
     }
 };
+*/
