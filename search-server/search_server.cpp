@@ -40,7 +40,7 @@ int SearchServer::GetDocumentCount() const {
 std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDocument(std::execution::parallel_policy par,
                                                                                 const std::string_view raw_query,
                                                                                 int document_id) const {
-    VecQuery query = ParseQuery(par, raw_query);
+    VecQuery query = ParseQueryVec(raw_query);
     /*std::sort(par, query.minus_words.begin(), query.minus_words.end());
     auto last_minus = std::unique(par, query.minus_words.begin(), query.minus_words.end());
     query.minus_words.erase(last_minus, query.minus_words.end());*/
@@ -203,13 +203,7 @@ SearchServer::QueryWord SearchServer::ParseQueryWord(const std::string_view text
     }
     return { word, is_minus, IsStopWord(word) };
 }
-SearchServer::VecQuery SearchServer::ParseQuery(std::execution::parallel_policy par, const std::string_view text) const {
-    //auto words = SplitIntoWordsView(text);
-   // int num_minus = std::count_if(par, words.begin(), words.end(), [](auto& word) {
-  /*  int num_minus = std::count_if(par, words.begin(), words.end(), [](auto& word) {
-        return word[0] == '-';
-        });
-    VecQuery result(num_minus, words.size()- num_minus);*/
+SearchServer::VecQuery SearchServer::ParseQueryVec(const std::string_view text) const {
     VecQuery result;
     for (const std::string_view word : SplitIntoWordsView(text)) {
         const auto query_word = ParseQueryWord(word);
@@ -238,6 +232,25 @@ SearchServer::Query SearchServer::ParseQuery(const std::string_view text) const 
         }
     }
     return result;
+}
+
+SearchServer::Query SearchServer::ParseQuery(std::execution::parallel_policy, const std::string_view text) const {
+    ConcurrentSet<std::string_view> set_plus(NUM_SUB_CONTAINERS);
+    ConcurrentSet<std::string_view> set_minus(NUM_SUB_CONTAINERS);
+    const auto words = SplitIntoWordsView(text);
+
+    ForEach(std::execution::par, words, [this, &set_plus, &set_minus](std::string_view word)
+        {
+            const QueryWord query_word = ParseQueryWord(word);
+            if (!query_word.is_stop)
+            {
+                query_word.is_minus ? set_minus.insert(query_word.data) : set_plus.insert(query_word.data);
+            }
+        });
+
+    Query result(set_plus.BuildOrdinarySet(), set_minus.BuildOrdinarySet());
+    return result;
+    //return Query{ set_plus.BuildOrdinarySet(), set_minus.BuildOrdinarySet() };
 }
 
 double SearchServer::ComputeWordInverseDocumentFreq(const std::string_view word) const {
