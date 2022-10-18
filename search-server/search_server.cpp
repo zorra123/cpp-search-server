@@ -247,10 +247,7 @@ SearchServer::Query SearchServer::ParseQuery(std::execution::parallel_policy, co
                 query_word.is_minus ? set_minus.insert(query_word.data) : set_plus.insert(query_word.data);
             }
         });
-
-    Query result(set_plus.BuildOrdinarySet(), set_minus.BuildOrdinarySet());
-    return result;
-    //return Query{ set_plus.BuildOrdinarySet(), set_minus.BuildOrdinarySet() };
+    return Query{ set_plus.BuildOrdinarySet(), set_minus.BuildOrdinarySet() };
 }
 
 double SearchServer::ComputeWordInverseDocumentFreq(const std::string_view word) const {

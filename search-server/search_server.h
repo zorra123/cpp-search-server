@@ -138,7 +138,6 @@ const int NUM_SUB_CONTAINERS        = 6000;
 template <typename StringContainer>
 SearchServer::SearchServer(const StringContainer& stop_words)
     : stop_words_(MakeUniqueNonEmptyStrings(stop_words))  // Extract non-empty stop words
-    //: stop_words_(stop_words)
 {
     using namespace std::literals::string_literals;
     if (!all_of(stop_words_.begin(), stop_words_.end(), IsValidWord)) {
@@ -174,7 +173,6 @@ inline std::vector<Document> SearchServer::FindTopDocuments(ExecutionPolicy& pol
         return FindTopDocuments(raw_query, document_predicate);
     }
     else {
-        //const auto query = ParseQuery(raw_query);
         const auto query = ParseQuery(std::execution::par, raw_query);
         auto matched_documents = FindAllDocuments(policy,query, document_predicate);
         
@@ -210,8 +208,6 @@ inline std::vector<Document> SearchServer::FindTopDocuments(ExecutionPolicy& pol
     return std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::sequenced_policy>? 
                                     FindTopDocuments(raw_query):
         FindTopDocuments(policy,raw_query, DocumentStatus::ACTUAL);
-
-    //return std::vector<Document>();
 }
 
 
