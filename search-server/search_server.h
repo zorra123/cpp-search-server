@@ -120,6 +120,7 @@ private:
     std::vector<Document> FindAllDocuments(const VecQuery& query, DocumentPredicate document_predicate) const;
     void SortQuery(VecQuery& query) const;
 
+    //Решил оставить, может когда-то пригодится for_each для контейнера с непроизвольным итератором, все равно находится в private секции
     template <typename ForwardRange, typename Function>
     void ForEach(const std::execution::parallel_policy&, ForwardRange& range, Function function) const;
 };
